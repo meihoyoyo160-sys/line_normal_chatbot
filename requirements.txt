@@ -2,3 +2,4 @@ flask
 python-dateutil
 google-genai
 line-bot-sdk
+gunicorn
