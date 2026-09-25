@@ -20,7 +20,7 @@ app = Flask(__name__)
 # ==== 1. 金鑰設定區 ====
 LINE_CHANNEL_ACCESS_TOKEN = '9wnF8AgyP1Otdaol15CI0gQmg9LSptY4vRmJ7w5AFlwxUQcBmgr93f5ENEZbP7XOUfh0baXWcwPFvDFJZA8/xH8k9S4zhQx481IX00bKCqsMsN1rsos0YMLj7BEiKD+YicKjHYev1NzHY/AlDCiJ+wdB04t89/1O/w1cDnyilFU='
 LINE_CHANNEL_SECRET = '35ceb4b586e28bbdf222e77ab84feb45'
-GEMINI_API_KEY = 'AQ.Ab8RN6LaJ4VOjrchAoAy7hfENK2W000wEdbgQ46Ai9u7oGEIKQ'
+GEMINI_API_KEY = 'AQ.Ab8RN6Lvj_WtwVkJobUTkuHhflN9WiAkgE0GdOWuN-j45OV8hg'
 
 # 初始化各項服務
 configuration = Configuration(access_token=LINE_CHANNEL_ACCESS_TOKEN)
