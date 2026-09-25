@@ -93,7 +93,7 @@ def handle_message(event):
 
     except Exception as e:
         print(f"Gemini API 發生錯誤的原因是: {e}")
-        reply_text = f"啊！你剛剛輸入的『{user_message}』讓我的伺服器短暫當機了！不過沒問題，我重開機一下，晚點再試一次就可以啦！"
+        reply_text = f"啊！你剛剛輸入的『{user_message}』讓我的伺服器短暫當機了！不過沒問題，我重開機一下，晚點再試一次就可以啦！因為一分鐘內所有用戶回答數量超過15次我就會當機要等一下"
 
     # (3) 將結果回傳給 LINE
     with ApiClient(configuration) as api_client_instance:
