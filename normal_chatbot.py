@@ -1,6 +1,7 @@
 import datetime
 from zoneinfo import ZoneInfo
 import os
+import gc  # 🌟 導入垃圾回收套件，用來拯救 512MB 記憶體
 from flask import Flask, request, abort
 from google import genai  # 新版 Gemini SDK
 from google.genai import types
@@ -17,44 +18,57 @@ from linebot.v3.webhooks import MessageEvent, TextMessageContent
 
 app = Flask(__name__)
 
-# ==== 1. 金鑰設定區 ====
-LINE_CHANNEL_ACCESS_TOKEN = '9wnF8AgyP1Otdaol15CI0gQmg9LSptY4vRmJ7w5AFlwxUQcBmgr93f5ENEZbP7XOUfh0baXWcwPFvDFJZA8/xH8k9S4zhQx481IX00bKCqsMsN1rsos0YMLj7BEiKD+YicKjHYev1NzHY/AlDCiJ+wdB04t89/1O/w1cDnyilFU='
-LINE_CHANNEL_SECRET = '35ceb4b586e28bbdf222e77ab84feb45'
-GEMINI_API_KEY = 'AQ.Ab8RN6Lvj_WtwVkJobUTkuHhflN9WiAkgE0GdOWuN-j45OV8hg'
+# ==== 1. 金鑰設定區 (已改為安全環境變數讀取，若無設定則使用你的預設值) ====
+LINE_CHANNEL_ACCESS_TOKEN = os.environ.get(
+    'LINE_CHANNEL_ACCESS_TOKEN', 
+    '9wnF8AgyP1Otdaol15CI0gQmg9LSptY4vRmJ7w5AFlwxUQcBmgr93f5ENEZbP7XOUfh0baXWcwPFvDFJZA8/xH8k9S4zhQx481IX00bKCqsMsN1rsos0YMLj7BEiKD+YicKjHYev1NzHY/AlDCiJ+wdB04t89/1O/w1cDnyilFU='
+)
+LINE_CHANNEL_SECRET = os.environ.get(
+    'LINE_CHANNEL_SECRET', 
+    '35ceb4b586e28bbdf222e77ab84feb45'
+)
+GEMINI_API_KEY = os.environ.get(
+    'GEMINI_API_KEY', 
+    'AQ.Ab8RN6Lvj_WtwVkJobUTkuHhflN9WiAkgE0GdOWuN-j45OV8hg'
+)
 
 # 初始化各項服務
 configuration = Configuration(access_token=LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-# 🌟 核心修正點 1：2026 新版 SDK 初始化 Client 的正確寫法
-# 新版 google-genai 規定，如果要在初始化時直接帶入 API Key，必須將參數名稱精準寫為「api_key」
-# （不可使用舊版 client_options 或 types 物件包裝，否則會在底層直接死機丟出 Exception）
+# 新版 google-genai 初始化
 ai_client = genai.Client(api_key=GEMINI_API_KEY)
 
-# ==== 2. LINE Webhook 接收端 (直撞首頁大門萬用版) ====
+# ==== 2. LINE Webhook 接收端 (新增防爆記憶體機制) ====
 @app.route("/", methods=['POST', 'GET'], strict_slashes=False)
 def callback():
-    # 如果 LINE 驗證按鈕發送 GET 測試請求，直接回傳 200 給它，解除驗證失敗！
+    # 如果 cron-job.org 或 LINE 驗證發送 GET 測試請求
     if request.method == 'GET':
-        return 'LINE Bot is running!', 200
+        response_text = 'LINE Bot is running!'
+        response_code = 200
+        gc.collect()  # 🌟 做了啥：戳完首頁後，立刻把多餘的網路連線暫存記憶體丟掉
+        return response_text, response_code
         
     signature = request.headers.get('X-Line-Signature', '')
     body = request.get_data(as_text=True)
+    
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
+        gc.collect()  # 🌟 做了啥：即使驗證失敗，也要把垃圾清乾淨才結束
         abort(400)
+        
+    gc.collect()  # 🌟 核心關鍵：當 LINE 機器人整套聊天流程、API 發送都結束後，下一秒強行清空所有記憶體垃圾！
     return 'OK'
 
-# ==== 3. 訊息處理與 AI 回覆邏輯 (100% 全 AI 暢聊版) ====
+# ==== 3. 訊息處理與 AI 回覆邏輯 ====
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     user_message = event.message.text  # 你傳給機器人的訊息
     reply_text = ""
 
-    # 🌟 徹底丟棄死板的關鍵字與早午晚時間死規則！直接啟動大頭兵男友 AI 聊天！
     try:
-        # 💡 即時抓取台灣最精準的目前小時，並塞給 Gemini 讓他自己判斷！
+        # 即時抓取台灣最精準的目前小時
         tw_hour = datetime.datetime.now(ZoneInfo("Asia/Taipei")).hour
         
         system_prompt = (
@@ -71,10 +85,7 @@ def handle_message(event):
             "嚴格限制『每次回覆只能 1 到 3 個短句』。句型要短！就像一般人打 LINE 一樣，絕對不要長篇大論，禁止使用任何條列式排版。"
         )
         
-        # 🌟 核心修正點 2：2026 新版 SDK 呼叫大腦的黃金字典語法
-        # 新版 SDK 為了簡化開發，在 generate_content 中可以直接透過單一字典型態傳遞
-        # 參數名稱必須精準呼應 'system_instruction' 與 'temperature'
-        # 這可以 100% 繞過舊版從 google.genai 引入 types 物件時，在免費雲端（Render）上產生的環境縮排判定與型態不匹配崩潰
+        # 呼叫 Gemini 3.5 Flash Lite
         response = ai_client.models.generate_content(
             model='gemini-3.5-flash-lite',
             contents=user_message,
@@ -94,8 +105,12 @@ def handle_message(event):
     except Exception as e:
         print(f"Gemini API 發生錯誤的原因是: {e}")
         reply_text = f"啊！你剛剛輸入的『{user_message}』讓我的伺服器短暫當機了！不過沒問題，我重開機一下，晚點再試一次就可以啦！因為一分鐘內所有用戶回答數量超過15次我就會當機要等一下"
+    
+    finally:
+        # 🌟 做了啥：不論 AI 生成是成功還是報錯當機，在準備回傳給 LINE 之前，先把剛才計算 Prompt 產生的暫存字串通通清掉
+        gc.collect()
 
-    # (3) 將結果回傳給 LINE
+    # 將結果回傳給 LINE
     with ApiClient(configuration) as api_client_instance:
         line_bot_api = MessagingApi(api_client_instance)
         line_bot_api.reply_message_with_http_info(
@@ -104,6 +119,9 @@ def handle_message(event):
                 messages=[TextMessage(text=reply_text)]
             )
         )
+        
+    # 🌟 做了啥：訊息安全送達使用者手機後，再度呼叫清潔工，確保發送訊息留下的 API 快取完全歸零
+    gc.collect()
 
 # ==== 4. 啟動伺服器 ====
 if __name__ == "__main__":
