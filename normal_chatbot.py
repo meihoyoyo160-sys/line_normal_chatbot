@@ -60,33 +60,34 @@ def handle_message(event):
     user_message = event.message.text  # 你傳給機器人的訊息
     reply_text = ""
 
-    # 🌟 新增：專屬關鍵字攔截機制 (勞業友 & gay)
-    if "勞業友" in user_message:
-        reply_text = "你竟然知道我！我是這個系統背後最不der、最帥的開發者，不論你說什麼我都給你一個讚"
-        
-        # 直接回傳給 LINE，不經過 Gemini API
-        with ApiClient(configuration) as api_client_instance:
-            line_bot_api = MessagingApi(api_client_instance)
-            line_bot_api.reply_message_with_http_info(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[TextMessage(text=reply_text)]
-                )
-            )
-        return # 攔截成功後直接結束這個函數，不再往下執行
+    # 🌟 新增：使用字典(Dictionary)統一管理所有專屬關鍵字攔截
+    # 只要在這邊新增 "關鍵字": "專屬回覆" 就可以了，完全不用動下面的程式碼！
+    special_replies = {
+        "勞業友": "你竟然知道我這個大帥哥！我是系統背後最不der、最酷的開發者，不論你說什麼我都給你一個讚",
+        "gay": "你才gay，你全家都是gay！以為我不知道你腦袋都裝什麼東西嗎"
+        "傻逼": "好了啦，哈哈哈! 你才是，這樣像機器人嗎SB"
+        "sb": "好了啦，哈哈哈! 你才是，這樣像機器人嗎SB"
+        "超爛": "喔是喔 真的假的，記得要回饋給我，不然你就被我扁"
+        "超廢": "喔是喔 真的假的，記得要回饋給我，不然你就被我扁"
+        "屁眼": "好下流，身為開發者的我早就知道你會這樣用了"
+        "皮炎": "好下流，身為開發者的我早就知道你會這樣用了"
+        "三小": "等下，不要急有問題回饋給我，不然你才三小"
+        "當機": "當機有問題馬上回饋給我，我才可以優化喔~"
+        "可憐": "可憐希望是好話，不然你可以打勞業友名字試試看"
+    }
 
-    elif "gay" in user_message.lower(): # 使用 .lower() 確保大寫 GAY 也能攔截到
-        reply_text = "你才gay 你全家都是gay！以為我不知道你腦袋都裝什麼東西嗎"
-        
-        with ApiClient(configuration) as api_client_instance:
-            line_bot_api = MessagingApi(api_client_instance)
-            line_bot_api.reply_message_with_http_info(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[TextMessage(text=reply_text)]
+    # 自動比對字典裡的所有關鍵字
+    for keyword, specific_reply in special_replies.items():
+        if keyword in user_message.lower(): # 使用 .lower() 確保大寫 GAY 也能攔截到
+            with ApiClient(configuration) as api_client_instance:
+                line_bot_api = MessagingApi(api_client_instance)
+                line_bot_api.reply_message_with_http_info(
+                    ReplyMessageRequest(
+                        reply_token=event.reply_token,
+                        messages=[TextMessage(text=specific_reply)]
+                    )
                 )
-            )
-        return
+            return # 攔截成功後直接結束這個函數，不再往下執行，省下 API 額度
 
     try:
         # 即時抓取台灣最精準的目前小時
