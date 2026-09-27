@@ -19,18 +19,9 @@ from linebot.v3.webhooks import MessageEvent, TextMessageContent
 app = Flask(__name__)
 
 # ==== 1. 金鑰設定區 (已改為安全環境變數讀取，若無設定則使用你的預設值) ====
-LINE_CHANNEL_ACCESS_TOKEN = os.environ.get(
-    'LINE_CHANNEL_ACCESS_TOKEN', 
-    '9wnF8AgyP1Otdaol15CI0gQmg9LSptY4vRmJ7w5AFlwxUQcBmgr93f5ENEZbP7XOUfh0baXWcwPFvDFJZA8/xH8k9S4zhQx481IX00bKCqsMsN1rsos0YMLj7BEiKD+YicKjHYev1NzHY/AlDCiJ+wdB04t89/1O/w1cDnyilFU='
-)
-LINE_CHANNEL_SECRET = os.environ.get(
-    'LINE_CHANNEL_SECRET', 
-    '35ceb4b586e28bbdf222e77ab84feb45'
-)
-GEMINI_API_KEY = os.environ.get(
-    'GEMINI_API_KEY', 
-    'AQ.Ab8RN6Lvj_WtwVkJobUTkuHhflN9WiAkgE0GdOWuN-j45OV8hg'
-)
+LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
+LINE_CHANNEL_SECRET = os.environ.get('LINE_CHANNEL_SECRET')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 # 初始化各項服務
 configuration = Configuration(access_token=LINE_CHANNEL_ACCESS_TOKEN)
