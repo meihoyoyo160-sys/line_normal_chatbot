@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 import os
 import gc  # 🌟 導入垃圾回收套件，用來拯救 512MB 記憶體
 from flask import Flask, request, abort
-from google import genai  # 新版 Gemini SDK
+from google import genai  # 新版 Gemini SDK 
 from google.genai import types
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
