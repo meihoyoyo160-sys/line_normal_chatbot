@@ -60,6 +60,34 @@ def handle_message(event):
     user_message = event.message.text  # 你傳給機器人的訊息
     reply_text = ""
 
+    # 🌟 新增：專屬關鍵字攔截機制 (勞業友 & gay)
+    if "勞業友" in user_message:
+        reply_text = "你竟然知道我！我是這個系統背後最不der、最帥的開發者，不論你說什麼我都給你一個讚"
+        
+        # 直接回傳給 LINE，不經過 Gemini API
+        with ApiClient(configuration) as api_client_instance:
+            line_bot_api = MessagingApi(api_client_instance)
+            line_bot_api.reply_message_with_http_info(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=reply_text)]
+                )
+            )
+        return # 攔截成功後直接結束這個函數，不再往下執行
+
+    elif "gay" in user_message.lower(): # 使用 .lower() 確保大寫 GAY 也能攔截到
+        reply_text = "你才gay 你全家都是gay！以為我不知道你腦袋都裝什麼東西嗎"
+        
+        with ApiClient(configuration) as api_client_instance:
+            line_bot_api = MessagingApi(api_client_instance)
+            line_bot_api.reply_message_with_http_info(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=reply_text)]
+                )
+            )
+        return
+
     try:
         # 即時抓取台灣最精準的目前小時
         tw_hour = datetime.datetime.now(ZoneInfo("Asia/Taipei")).hour
