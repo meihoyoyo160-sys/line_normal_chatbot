@@ -2,6 +2,7 @@ import datetime
 from zoneinfo import ZoneInfo
 import os
 import gc  # 🌟 導入垃圾回收套件，用來拯救 512MB 記憶體
+import random # 🌟 導入隨機模組，讓貼圖回覆不重複
 from flask import Flask, request, abort
 from google import genai  # 新版 Gemini SDK 
 from google.genai import types
@@ -14,7 +15,8 @@ from linebot.v3.messaging import (
     ReplyMessageRequest,
     TextMessage
 )
-from linebot.v3.webhooks import MessageEvent, TextMessageContent
+# 🌟 注意這裡引入了 StickerMessageContent，才能處理貼圖
+from linebot.v3.webhooks import MessageEvent, TextMessageContent, StickerMessageContent
 
 app = Flask(__name__)
 
@@ -73,7 +75,9 @@ def handle_message(event):
             "2. 聽不懂或不知道怎麼回：直接承認（例如：『啊？這題太深奧我腦袋 CPU 轉不過來，你再說一次？』），不要硬扯不相關的冷笑話。\n"
             "3. 結合時間：深夜就說在爆肝或剛下班；吃飯時間就說準備去買便當。\n"
             "「強制字數限制」：\n"
-            "嚴格限制『每次回覆只能 1 到 3 個短句』。句型要短！就像一般人打 LINE 一樣，絕對不要長篇大論，禁止使用任何條列式排版。"
+            "嚴格限制『每次回覆只能 1 到 3 個短句』。句型要短！就像一般人打 LINE 一樣，絕對不要長篇大論，禁止使用任何條列式排版。\n"
+            "「內容限制 (🌟新增)」：\n"
+            "雖然是幽默搞笑，但請保持健康風格，絕對禁止產生任何18禁、過度性暗示或暴力的字眼，以免觸發系統安全審查。"
         )
         
         # 呼叫 Gemini 3.5 Flash Lite
@@ -83,15 +87,21 @@ def handle_message(event):
             config={
                 'system_instruction': system_prompt,
                 'temperature': 0.8,
+                # 🌟 修改：將阻擋等級降到最低，避免正常幹話被消音
                 'safety_settings': [
-                    types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_ONLY_HIGH"),
-                    types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_ONLY_HIGH"),
-                    types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_ONLY_HIGH"),
-                    types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_ONLY_HIGH")
+                    types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
+                    types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
+                    types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
+                    types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE")
                 ]
             }
         )
-        reply_text = response.text.strip()
+        
+        # 🌟 修改：加入防呆機制，確認有文字才處理，避免 NoneType Error
+        if response.text:
+            reply_text = response.text.strip()
+        else:
+            reply_text = "啊！你剛剛那句話讓我大腦 CPU 瞬間過熱當機，你剛剛說啥？可以再說一次嗎？"
 
     except Exception as e:
         print(f"Gemini API 發生錯誤的原因是: {e}")
@@ -113,6 +123,60 @@ def handle_message(event):
         
     # 🌟 做了啥：訊息安全送達使用者手機後，再度呼叫清潔工，確保發送訊息留下的 API 快取完全歸零
     gc.collect()
+
+
+# ==== 3.5 新增：貼圖訊息處理區塊 (專屬工程師的隨機 30 種回覆) ====
+@handler.add(MessageEvent, message=StickerMessageContent)
+def handle_sticker_message(event):
+    try:
+        # 工程師收到貼圖時的 30 種隨機萬用回覆清單
+        sticker_replies = [
+            "哇咧，這貼圖太鬧了吧！我剛在解 Bug 差點笑出來。",
+            "收到貼圖！這讓我的 CPU 稍微降溫了一點 哈哈。",
+            "這貼圖有夠 Q！先存起來，下次 Code Review 拿來噴人用。",
+            "可以啦！看到這貼圖，我覺得今天的 Bug 都不是問題了。",
+            "真假，這貼圖也太白爛了吧 哈哈哈！",
+            "啊！你傳這貼圖害我切錯視窗，差點把 Server 關掉 哈哈。",
+            "這貼圖讚誒！工程師的快樂就是這麼樸實無華。",
+            "收到！這貼圖可愛到讓我暫停敲鍵盤三秒鐘。",
+            "哈哈 這什麼怪貼圖啦，我先把它加進我的貼圖庫了！",
+            "沒問題！有這張貼圖，我今晚加班寫 Code 有動力了。",
+            "這貼圖的幽默感有抓到喔，跟我的 Code 一樣漂亮！",
+            "哇咧，這圖也太貼切了吧，完全是我遇到 Bug 的表情。",
+            "可以啦，看在貼圖這麼搞笑的份上，我繼續回去奮鬥了！",
+            "啊哈哈哈，你哪來這麼多梗圖啦，笑死。",
+            "真假！這張貼圖完美詮釋了我現在看 Log 的心情。",
+            "歐虧虧！收到貼圖，馬上把這心情 push 到 GitHub 上。",
+            "這貼圖很解壓誒！比重開機還有用 哈哈。",
+            "哈哈，這畫面太美我不敢看，我要回去修 Bug 了。",
+            "這貼圖太魔性了吧，害我腦袋一直在 loop 這個畫面。",
+            "讚啦！工程師就是需要這種圖來點綴枯燥的 Terminal。",
+            "沒問題，這貼圖我給 100 分！完全沒 Bug。",
+            "哇咧，突然傳這貼圖，害我喝咖啡差點嗆到 哈哈！",
+            "這張真的神回覆誒，我下次開會也要用這表情。",
+            "哈哈！這圖太讚了，先收起來當作下次發 PR 的慶祝圖。",
+            "真假啦，看到這圖我瞬間忘記剛剛變數命名要叫什麼了。",
+            "啊！這貼圖有毒吧，害我盯著螢幕笑了五分鐘。",
+            "可以啦，你這貼圖完全是工程師日常寫照啊！",
+            "太好笑了！這圖直接 bypass 了我的心情防火牆。",
+            "哈哈，你傳這圖的 timing 也太準了吧，剛好解完一個大 Bug！",
+            "收到收到！感謝貼圖支援，我的電力恢復 20% 了！"
+        ]
+        
+        # 使用 random.choice 隨機挑選一句
+        reply_text = random.choice(sticker_replies)
+        
+        with ApiClient(configuration) as api_client_instance:
+            line_bot_api = MessagingApi(api_client_instance)
+            line_bot_api.reply_message_with_http_info(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=reply_text)]
+                )
+            )
+    except Exception as e:
+        print(f"貼圖回覆發生錯誤: {e}")
+
 
 # ==== 4. 啟動伺服器 ====
 if __name__ == "__main__":
