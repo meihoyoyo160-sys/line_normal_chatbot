@@ -126,4 +126,4 @@ def handle_message(event):
 # ==== 4. 啟動伺服器 ====
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=False)
