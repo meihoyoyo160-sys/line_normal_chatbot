@@ -7,7 +7,7 @@ from flask import Flask, request, abort
 from google import genai  # 新版 Gemini SDK 
 from google.genai import types
 from linebot.v3 import WebhookHandler
-from linebot.v3.exceptions import InvalidSignatureError
+from linebot.v3.exceptions import InvalidSignatureError 
 from linebot.v3.messaging import (
     Configuration,
     ApiClient, 
@@ -105,7 +105,7 @@ def handle_message(event):
     # 🌟 新增：講笑話功能 (偵測到「笑話」關鍵字，隨機抽一個)
     if "笑話" in user_message:
         jokes = [
-            "ˋ4是誰殺的?不會是5吧?錯 是黑松，因為黑松沙士(殺4)",
+            "4是誰殺的?不會是5吧?錯 是黑松，因為黑松沙士(殺4)",
             "為什麼工程師分不清萬聖節和聖誕節？因為 Oct 31 等於 Dec 25！（八進位的 31 = 十進位的 25）",
             "老婆對工程師老公說：「去買幾個包子，如果看到賣西瓜的，就買一個。」結果老公只買了一個包子。老婆問為什麼，老公說：「因為我看到賣西瓜的了，條件成立。」",
             "Y跟U走在路上，U突然很難過，Y就問U說:U你哭囉(Uniqlo)，好 超爛 ",
@@ -120,7 +120,7 @@ def handle_message(event):
             "你知道為什麼客家人不能喝熱水，因為小氣鬼喝涼水",
             "劉備字玄德，張飛字益德，那伍佰呢   五百字心得!",
             "有一天，紅豆餅出車禍了，他臨死前說的最後一句話是什麼？...「啊，內餡外露了...」",
-            "藝人靠知名度，不紅的時候要住到養老院去，因為那邊有翻身的機會!!",
+            "藝人靠知名度，不紅的時候要住到養老院去，因為那邊有翻身的機會 !!",
             "記得壞事一定要中午做，因為早晚會有報應。",
             "我爸媽在我小時候就規定我絕對不能往後，因為往後的日子不好過，我們要盡量往前。",
             "為什麼美人魚最可憐？...因為她永遠不能「劈腿」。",
