@@ -35,10 +35,11 @@ ai_client = genai.Client(api_key=GEMINI_API_KEY)
 # ==== 2. LINE Webhook 接收端 (新增防爆記憶體機制) ====
 @app.route("/", methods=['POST', 'GET'], strict_slashes=False)
 def callback():
+    # 如果 cron-job.org 或 LINE 驗證發送 GET 測試請求
     if request.method == 'GET':
         response_text = 'LINE Bot is running!'
         response_code = 200
-        gc.collect() 
+        gc.collect()  # 🌟 做了啥：戳完首頁後，立刻把多餘的網路連線暫存記憶體丟掉
         return response_text, response_code
         
     signature = request.headers.get('X-Line-Signature', '')
@@ -47,10 +48,10 @@ def callback():
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
-        gc.collect() 
+        gc.collect()  # 🌟 做了啥：即使驗證失敗，也要把垃圾清乾淨才結束
         abort(400)
         
-    gc.collect() 
+    gc.collect()  # 🌟 核心關鍵：當 LINE 機器人整套聊天流程、API 發送都結束後，下一秒強行清空所有記憶體垃圾！
     return 'OK'
 
 # ==== 3. 訊息處理與 AI 回覆邏輯 ====
@@ -60,6 +61,7 @@ def handle_message(event):
     reply_text = ""
 
     # 🌟 新增：使用字典(Dictionary)統一管理所有專屬關鍵字攔截
+    # 只要在這邊新增 "關鍵字": "專屬回覆" 就可以了，完全不用動下面的程式碼！
     special_replies = {
         "勞業友": "你竟然知道我這個大帥哥！我是系統背後最不der、最酷的開發者，不論你說什麼我都給你一個讚",
         "gay": "你才gay，你全家都是gay！以為我不知道你想說什麼嗎",
@@ -85,7 +87,7 @@ def handle_message(event):
 
     # 自動比對字典裡的所有關鍵字
     for keyword, specific_reply in special_replies.items():
-        if keyword in user_message.lower():
+        if keyword in user_message.lower(): # 使用 .lower() 確保大寫 GAY 也能攔截到
             with ApiClient(configuration) as api_client_instance:
                 line_bot_api = MessagingApi(api_client_instance)
                 line_bot_api.reply_message_with_http_info(
@@ -94,7 +96,7 @@ def handle_message(event):
                         messages=[TextMessage(text=specific_reply)]
                     )
                 )
-            return 
+            return # 攔截成功後直接結束這個函數，不再往下執行，省下 API 額度
 
     try:
         # 即時抓取台灣最精準的目前小時
@@ -105,16 +107,16 @@ def handle_message(event):
             "「核心設定」：\n"
             "1. 極致真人感：你正在用 LINE 隨手回朋友訊息，說話要非常口語、直接。禁止像機器人般生硬，也禁止講出前後邏輯不通的贅字。\n"
             "2. 自然口頭禪：請『視情況隨機』使用「啊」、「可以啦」、「沒問題」、「哈哈」、「真假」等字眼。注意！不要每一句都硬塞，語氣順暢最重要。\n"
-            "3. 保持新鮮感：**絕對不要連續兩次用一樣的笑話或比喻**。\n"
+            "3. 保持新鮮感：**絕對不要連續兩次用一樣的笑話或比喻**（例如不要一直說重開機或拿乖乖），要根據使用者的話給出不同的自然反應。\n"
             "「情境應對」：\n"
-            "1. 遇到髒話/不雅字：絕不說教！用一句話幽默帶過。\n"
+            "1. 遇到髒話/不雅字：絕不說教！用一句話幽默帶過（例如：『啊！這句殺傷力太大我差點當機，但我重開機一下就可以啦！』）。\n"
             "2. 結合時間：深夜就說在爆肝或剛下班；吃飯時間就說準備去買便當。\n"
-            "3. 知識問答與搜尋 (🌟關鍵修改)：如果朋友要你推薦東西（例如推薦日文歌、餐廳）或查知識，請發揮 Google 搜尋能力找最新資訊，並且『一定要附上你找到的網頁連結 (URL)』給對方參考！語氣保持工程師幹話感，例如：『啊，最近這首超紅啦，連結拿去聽啦：https://... 』。\n"
+            "3. 知識問答 (🌟新增)：如果朋友問你任何知識、翻譯、天氣或常識問題（例如查日文、查資料），請你發揮 Google 的能力『準確回答他』，但語氣『必須保持工程師的隨性幹話感』。例如：如果問番茄的日文，你可以回：『啊，就「トマト (tomato)」啊！發音跟英文有夠像，可以直接拿去日本點沙拉啦 哈！』。絕對不要像百科全書一樣死板！\n"
             "4. 聽不懂或不知道怎麼回：直接承認（例如：『啊？這題太深奧我腦袋 CPU 轉不過來，你再去 Google 一下？』）。\n"
             "「強制字數限制」：\n"
-            "嚴格限制『每次回覆只能 1 到 3 個短句』加上網址。句型要短！就像一般人打 LINE 一樣。\n"
+            "嚴格限制『每次回覆只能 1 到 3 個短句』。句型要短！就像一般人打 LINE 一樣，絕對不要長篇大論，禁止使用任何條列式排版。\n"
             "「內容限制」：\n"
-            "雖然是幽默搞笑，但請保持健康風格，絕對禁止產生任何18禁、過度性暗示或暴力的字眼。"
+            "雖然是幽默搞笑，但請保持健康風格，絕對禁止產生任何18禁、過度性暗示或暴力的字眼，以免觸發系統安全審查。"
         )
         
         # 呼叫 Gemini 3.5 Flash Lite
@@ -124,17 +126,17 @@ def handle_message(event):
             config={
                 'system_instruction': system_prompt,
                 'temperature': 0.8,
+                # 🌟 修改：將阻擋等級降到最低，避免正常幹話被消音
                 'safety_settings': [
                     types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE")
-                ],
-                # 🌟 絕對不能漏掉這行！這是讓機器人連上 Google 搜尋的關鍵開關
-                'tools': [{'google_search': {}}] 
+                ]
             }
         )
         
+        # 🌟 修改：加入防呆機制，確認有文字才處理，避免 NoneType Error
         if response.text:
             reply_text = response.text.strip()
         else:
@@ -145,6 +147,7 @@ def handle_message(event):
         reply_text = f"啊！你剛剛輸入的『{user_message}』讓我的伺服器短暫當機了！不過沒問題，我重開機一下，晚點再試一次就可以啦！因為一分鐘內所有用戶回答數量超過15次我就會當機要等一下"
     
     finally:
+        # 🌟 做了啥：不論 AI 生成是成功還是報錯當機，在準備回傳給 LINE 之前，先把剛才計算 Prompt 產生的暫存字串通通清掉
         gc.collect()
 
     # 將結果回傳給 LINE
@@ -157,7 +160,9 @@ def handle_message(event):
             )
         )
         
+    # 🌟 做了啥：訊息安全送達使用者手機後，再度呼叫清潔工，確保發送訊息留下的 API 快取完全歸零
     gc.collect()
+
 
 # ==== 3.5 新增：貼圖訊息處理區塊 (專屬工程師的隨機 30 種回覆) ====
 @handler.add(MessageEvent, message=StickerMessageContent)
@@ -197,6 +202,7 @@ def handle_sticker_message(event):
             "收到收到！感謝貼圖支援，我的電力恢復 20% 了！"
         ]
         
+        # 使用 random.choice 隨機挑選一句
         reply_text = random.choice(sticker_replies)
         
         with ApiClient(configuration) as api_client_instance:
@@ -209,6 +215,7 @@ def handle_sticker_message(event):
             )
     except Exception as e:
         print(f"貼圖回覆發生錯誤: {e}")
+
 
 # ==== 4. 啟動伺服器 ====
 if __name__ == "__main__":
