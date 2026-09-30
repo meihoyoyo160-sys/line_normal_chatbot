@@ -140,7 +140,7 @@ def handle_message(event):
                     messages=[TextMessage(text=reply_text)]
                 )
             )
-        return # 笑話講完就下班，不浪費 AI 額度
+        return # 笑話講完就下班，不浪費 API 額度
 
     try:
         # 即時抓取台灣最精準的目前小時
@@ -164,7 +164,7 @@ def handle_message(event):
             "雖然是幽默搞笑，但請保持健康風格，絕對禁止產生任何18禁、過度性暗示或暴力的字眼，以免觸發系統安全審查。"
         )
         
-        # 呼叫 Gemini 3.5 Flash Lite
+        # 🌟 1. 建立對話模式物件（改用 Types 宣告格式，安全套用個性指令與防審查設定）
         chat = ai_client.chats.create(
             model='gemini-3.5-flash-lite',
             config=types.GenerateContentConfig(
@@ -179,7 +179,10 @@ def handle_message(event):
             )
         )
         
-        # 🌟 修改：加入防呆機制，確認有文字才處理，避免 NoneType Error
+        # 🌟 2. 【這次補上的核心修正】真正呼叫對話，將用戶訊息送給 Gemini 處理並產生 response！
+        response = chat.send_message(user_message)
+        
+        # 🌟 3. 防呆機制：確認有文字回傳才取用
         if response.text:
             reply_text = response.text.strip()
         else:
@@ -190,64 +193,11 @@ def handle_message(event):
         reply_text = f"啊！你剛剛輸入的『{user_message}』讓我的伺服器短暫當機了！不過沒問題，我重開機一下，晚點再試一次就可以啦！因為一分鐘內所有用戶回答數量超過15次我就會當機要等一下"
     
     finally:
-        # 🌟 做了啥：不論 AI 生成是成功還是報錯當機，在準備回傳給 LINE 之前，先把剛才計算 Prompt 產生的暫存字串通通清掉
+        # 不論成功或報錯，都主動回收記憶體
         gc.collect()
 
-    # 將結果回傳給 LINE
-    with ApiClient(configuration) as api_client_instance:
-        line_bot_api = MessagingApi(api_client_instance)
-        line_bot_api.reply_message_with_http_info(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=reply_text)]
-            )
-        )
-        
-    # 🌟 做了啥：訊息安全送達使用者手機後，再度呼叫清潔工，確保發送訊息留下的 API 快取完全歸零
-    gc.collect()
-
-
-# ==== 3.5 新增：貼圖訊息處理區塊 (專屬工程師的隨機 30 種回覆) ====
-@handler.add(MessageEvent, message=StickerMessageContent)
-def handle_sticker_message(event):
+    # ==== 4. 將結果回傳給 LINE ====
     try:
-        # 工程師收到貼圖時的 30 種隨機萬用回覆清單
-        sticker_replies = [
-            "哇咧，這貼圖太鬧了吧！我剛在解 Bug 差點笑出來。",
-            "收到貼圖！這讓我的 CPU 稍微降溫了一點 哈哈。",
-            "這貼圖有夠 Q！先存起來，下次 Code Review 拿來噴人用。",
-            "可以啦！看到這貼圖，我覺得今天的 Bug 都不是問題了。",
-            "真假，這貼圖也太白爛了吧 哈哈哈！",
-            "啊！你傳這貼圖害我切錯視窗，差點把 Server 關掉 哈哈。",
-            "這貼圖讚誒！工程師的快樂就是這麼樸實無華。",
-            "收到！這貼圖可愛到讓我暫停敲鍵盤三秒鐘。",
-            "哈哈 這什麼怪貼圖啦，我先把它加進我的貼圖庫了！",
-            "沒問題！有這張貼圖，我今晚加班寫 Code 有動力了。",
-            "這貼圖的幽默感有抓到喔，跟我的 Code 一樣漂亮！",
-            "哇咧，這圖也太貼切了吧，完全是我遇到 Bug 的表情。",
-            "可以啦，看在貼圖這麼搞笑的份上，我繼續回去奮鬥了！",
-            "啊哈哈哈，你哪來這麼多梗圖啦，笑死。",
-            "真假！這張貼圖完美詮釋了我現在看 Log 的心情。",
-            "歐虧虧！收到貼圖，馬上把這心情 push 到 GitHub 上。",
-            "這貼圖很解壓誒！比重開機還有用 哈哈。",
-            "哈哈，這畫面太美我不敢看，我要回去修 Bug 了。",
-            "這貼圖太魔性了吧，害我腦袋一直在 loop 這個畫面。",
-            "讚啦！工程師就是需要這種圖來點綴枯燥的 Terminal。",
-            "沒問題，這貼圖我給 100 分！完全沒 Bug。",
-            "哇咧，突然傳這貼圖，害我喝咖啡差點嗆到 哈哈！",
-            "這張真的神回覆誒，我下次開會也要用這表情。",
-            "哈哈！這圖太讚了，先收起來當作下次發 PR 的慶祝圖。",
-            "真假啦，看到這圖我瞬間忘記剛剛變數命名要叫什麼了。",
-            "啊！這貼圖有毒吧，害我盯著螢幕笑了五分鐘。",
-            "可以啦，你這貼圖完全是工程師日常寫照啊！",
-            "太好笑了！這圖直接 bypass 了我的心情防火牆。",
-            "哈哈，你傳這圖的 timing 也太準了吧，剛好解完一個大 Bug！",
-            "收到收到！感謝貼圖支援，我的電力恢復 20% 了！"
-        ]
-        
-        # 使用 random.choice 隨機挑選一句
-        reply_text = random.choice(sticker_replies)
-        
         with ApiClient(configuration) as api_client_instance:
             line_bot_api = MessagingApi(api_client_instance)
             line_bot_api.reply_message_with_http_info(
@@ -260,7 +210,7 @@ def handle_sticker_message(event):
         print(f"貼圖回覆發生錯誤: {e}")
 
 
-# ==== 4. 啟推伺服器 ====
+# ==== 5. 啟動伺服器 ====
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
