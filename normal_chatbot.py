@@ -165,19 +165,18 @@ def handle_message(event):
         )
         
         # 呼叫 Gemini 3.5 Flash Lite
-        response = ai_client.models.generate_content(
+        chat = ai_client.chats.create(
             model='gemini-3.5-flash-lite',
-            contents=user_message,
-            config={
-                'system_instruction': system_prompt,
-                'temperature': 0.8,
-                'safety_settings': [
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.8,
+                safety_settings=[
                     types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE")
                 ]
-            }
+            )
         )
         
         # 🌟 修改：加入防呆機制，確認有文字才處理，避免 NoneType Error
